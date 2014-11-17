@@ -20,8 +20,8 @@ classdef pitcher < handle
 		fadeOut = 0.1;
 		currentInstrument = 'pureTone';
 		instruments = struct();
-		reverbDepth = 0;
-		reverbDelay = 0.05;
+		reverbDepth = 7;
+		reverbDelay = 0.005;
 		
     end
     
@@ -37,7 +37,7 @@ classdef pitcher < handle
 			3*2,0.9;
 			4*2,0.85;
 			5*2,0.6;
-			]
+			];
 			
 			self.instruments.('flute2') = [
 			1,1;
@@ -55,7 +55,7 @@ classdef pitcher < handle
 			13,3/60;
 			14,2/60;
 			15,2/60;
-			]
+			];
 			
 			
 			self.instruments.('cello') = [
@@ -83,9 +83,37 @@ classdef pitcher < handle
 			22,0.20;
 			23,0.11;
 			];
-		end
-	
-		function fillFreqMap(this, timeSamples)
+        end
+        
+        function fillFreqMap(this, timeSamples)
+            [pitchPoints,dud] = size(this.frequencies);
+            lastPointFrame=1;
+            lastFrequency = this.frequencies(1,2);
+            for i = 1:pitchPoints
+               
+                
+                nextPointFrame = floor(this.frequencies(i,1) * this.Fs) + 1;
+                nextFrequency = this.frequencies(i,2);
+                this.freqMap (1,lastPointFrame:nextPointFrame) = logspace(log10(lastFrequency),log10(nextFrequency),(nextPointFrame - lastPointFrame)+1);
+                lastFrequency = nextFrequency;
+                lastPointFrame = nextPointFrame;
+                if i == pitchPoints
+                    %nextPointFrame = timeSamples;
+                    this.freqMap (1,nextPointFrame:timeSamples) = logspace(log10(nextFrequency),log10(nextFrequency),(timeSamples - nextPointFrame)+1);
+                end      
+            end
+            for i = 1:timeSamples
+              %  this.freqMap(1,i) = this.addVibrato(this.freqMap(1,i),i/this.Fs);
+            end
+            
+            
+        
+            
+        end
+        
+        
+        
+        function fillFreqMap2(this, timeSamples)
 			freqSegment = 1;
 			[lastSegment,dud] = size(this.frequencies);
 			lastFrequency = this.frequencies(1,2);
@@ -147,7 +175,7 @@ classdef pitcher < handle
 				this.ampMap(1,i) = finalAmp;
 			end
 			
-			this.ampMap = this.ampMap.^(14)
+			%this.ampMap = this.ampMap.^(14)
 			
 			this.ampMap = normalise(this.ampMap);
 			
@@ -178,7 +206,7 @@ classdef pitcher < handle
 			lastPoint = size(this.frequencies);
 			lastPointTime = this.frequencies(lastPoint(1),1);
 			if lastPointTime >= this.duration || this.duration == 0;
-				this.duration = lastPointTime + 0.0001;
+				this.duration = lastPointTime;
 			end
 			
 			formants = this.instruments.(this.currentInstrument);
@@ -222,6 +250,8 @@ classdef pitcher < handle
 			this.applyFadeIn();
 			this.applyFadeOut();
 			this.addReverb();
+            this.audiobuffer = this.audiobuffer * 0.999;
+            disp(max(this.audiobuffer));
 		end
 	
 		function applyFadeIn(this)
@@ -248,7 +278,7 @@ classdef pitcher < handle
 			bufferFragment = cat(2,this.audiobuffer,zeros(1,delayInFrames*this.reverbDepth));
 			for i = 1:this.reverbDepth
 				reverb = cat(2,cat(2,zeros(1,(delayInFrames*i)),this.audiobuffer),zeros(1,delayInFrames*(this.reverbDepth-i)));
-				reverb = reverb * ((this.reverbDepth-i+1)/(this.reverbDepth+1))^2;
+				reverb = reverb * i/(2^i);
 				bufferFragment = bufferFragment + reverb;
 			end
 						intensity = max(abs(bufferFragment));
